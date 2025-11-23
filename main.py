@@ -2,6 +2,7 @@ from kax import acts
 from pprint import pprint
 import os
 import time
+import logging
 
 # configuracines de inicio 
 # configuracines de inicio 
@@ -39,9 +40,13 @@ SAVE_FILENAME = "nuevo_f15mb.pdf"
 PDF_PATH_IN = os.path.join(KAX_STORE_DIR, PDF_FILENAME)
 PDF_PATH_OUT = os.path.join(KAX_FILES_DIR, SAVE_FILENAME)
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def kax_pdf():
+
     if not os.path.exists(PDF_PATH_IN):
         print("el archivo no existe")
+        logging.info("El archivo no existe")
         return
 
     star_time = time.time()
@@ -59,11 +64,14 @@ def kax_pdf():
         if (metadata and isinstance(metadata, dict) and 'resources' in metadata and isinstance(metadata['resources'], list) and len(metadata['resources']) > 0 and 'hash' in metadata['resources'][0]):
             file_hash = metadata['resources'][0]['hash']
             print("archivo cargado en memoria con hash")
+            logging.info("archivo cargado en memoria con hash")
         else:
             print("no se encontro el hash")
+            logging.error("no se encontro el hash")
             return
     except Exception as e:
         print(f"error al cargar el archivo {e}")
+        logging.error(f"error al cargar el archivo {e}")
         return
     
     #memoria a nube
@@ -73,8 +81,10 @@ def kax_pdf():
     try:
         acts.uploadToCloudFromMemory(metadata)
         print("PDF subido a la nube")
+        logging.info("archivo subido a la nube")
     except Exception as e:
         print(f"error al subir el archivo a la nube {e}")
+        logging.error(f"error al subir el archivo a la nube {e}")
         return
     
     # eliminar de memoria compartida 
@@ -84,8 +94,10 @@ def kax_pdf():
     try:
         acts.removeShm(file_hash)
         print("archivo eliminado de la memoria compartida local")
+        logging.info("archivo eliminado de la memoria compartida")
     except Exception as e:
         print("error al eliminar el archivo de la memoria")
+        logging.error("error al eliminar el archivo de la memoria")
         # La ejecución puede continuar, es un paso no crítico para el flujo principal.
 
     # descargar de nube a memoria compartida
@@ -95,8 +107,10 @@ def kax_pdf():
     try:
         acts.downloadFromCloud(file_hash)
         print("descarga completa de la nube a memoria compartida")
+        logging.info("descarga completa de la nube a memoria compartida")
     except Exception as e:
         print(f"error al descargar el archivo de la nube {e}")
+        logging.error(f"error al descargar el archivo de la nube {e}")
         return
     
     # guardar en disco
@@ -107,15 +121,19 @@ def kax_pdf():
         data = acts.getRes(file_hash)
         acts.saveFile("",data, PDF_PATH_OUT)
         print(f"se guardo el archivo")
+        logging.info(f"se guardo el archivo")
         acts.removeShmFromCloud(file_hash)
         print("archivo eliminado")
+        logging.info("archivo eliminado")
     except Exception as e:
         print(f"error al guardar el archivo {e}")
+        logging.error(f"error al guardar el archivo {e}")
         return
     
     end_time = time.time()
     tiempo_total = end_time - star_time
     print(f"tiempo de operacion {tiempo_total:.4f} en segundos")
+    logging.info(f"tiempo de operacion {tiempo_total:.4f} en segundos")
 
     #comprobar que el archivo se guardo correctamente
     #comprobar que el archivo se guardo correctamente
@@ -124,8 +142,10 @@ if __name__ == "__main__":
     if not os.path.exists(KAX_STORE_DIR):
         os.makedirs(KAX_STORE_DIR)
         print(f"Carpeta creada: {KAX_STORE_DIR}")
+        logging.info(f"Carpeta creada: {KAX_STORE_DIR}")
     if not os.path.exists(KAX_FILES_DIR):
         os.makedirs(KAX_FILES_DIR)
         print(f"Carpeta creada: {KAX_FILES_DIR}")
+        logging.info(f"Carpeta creada: {KAX_FILES_DIR}")
     
     kax_pdf()
