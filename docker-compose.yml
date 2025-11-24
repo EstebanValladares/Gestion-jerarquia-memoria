@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # 1. Servicio de Coherencia (El que implementa el directorio MSI)
+  coherence-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coherence_service
+    # Ejecuta el script del servicio
+    command: python coherence_service.py
+    ports:
+      # Exponemos el puerto para que los clientes (y potencialmente tú) accedan
+      - "5001:5001" 
+    networks:
+      - mem_net
+
+  # 2. Cliente 1 ($C_1$)
+  client1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docker_container_1
+    # Ejecuta el script original (main.py - Pasos 1-5)
+    command: python main.py
+    environment:
+      # Se usa para identificarlo en el Servicio de Coherencia
+      - CLIENT_ID=C1
+    volumes:
+      - ./kaxStore:/app/kaxStore
+      - ./kaxFiles:/app/kaxFiles
+    networks:
+      - mem_net
+    # Asegura que el servicio de coherencia esté listo antes de iniciar
+    depends_on:
+      - coherence-service
+
+  # 3. Cliente 2 ($C_2$)
+  client2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docker_container_2
+    # Ejecuta el nuevo script (main_c2.py - Pasos 6-8)
+    command: python main_c2.py
+    environment:
+      - CLIENT_ID=C2
+    volumes:
+      - ./kaxStore:/app/kaxStore
+      - ./kaxFiles:/app/kaxFiles
+    networks:
+      - mem_net
+    depends_on:
+      - coherence-service
+
+networks:
+  mem_net:
+    driver: bridge
