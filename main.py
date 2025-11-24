@@ -15,6 +15,9 @@ USER = os.getenv("USER") or "esteban" # dsuario por defecto
 KAX_STORE_DIR = os.path.join(BASE_PATH, "kaxStore")
 KAX_FILES_DIR = os.path.join(BASE_PATH, "kaxFiles")
 
+# DEFINICIÓN DEL ARCHIVO PARA COMPARTIR EL HASH (NUEVO)
+HASH_FILE = os.path.join(KAX_FILES_DIR, "segmento_y.hash")
+
 #servidores del documento 
 #servidores del documento 
 #servidores del documento 
@@ -45,8 +48,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def kax_pdf():
 
     if not os.path.exists(PDF_PATH_IN):
-        print("el archivo no existe")
-        logging.info("El archivo no existe")
+        logging.info("el archivo no existe")
         return
 
     star_time = time.time()
@@ -57,33 +59,35 @@ def kax_pdf():
     #de disco a memoria
 
     try:
-        print("cargando PDF en memoria")
+        print("cargando pdf en memoria")
         metadata = acts.loadRes(PDF_PATH_IN) 
         pprint(metadata)
 
         if (metadata and isinstance(metadata, dict) and 'resources' in metadata and isinstance(metadata['resources'], list) and len(metadata['resources']) > 0 and 'hash' in metadata['resources'][0]):
             file_hash = metadata['resources'][0]['hash']
-            print("archivo cargado en memoria con hash")
             logging.info("archivo cargado en memoria con hash")
         else:
-            print("no se encontro el hash")
             logging.error("no se encontro el hash")
             return
     except Exception as e:
-        print(f"error al cargar el archivo {e}")
         logging.error(f"error al cargar el archivo {e}")
         return
     
-    #memoria a nube
+    #memoria a nube (Pasos 3 y 4: C1 crea Y en IMS)
     #memoria a nube
     #memoria a nube
 
     try:
         acts.uploadToCloudFromMemory(metadata)
-        print("PDF subido a la nube")
         logging.info("archivo subido a la nube")
+        
+        #C1 comparte el segmento Y
+        if file_hash:
+            with open(HASH_FILE, "w") as f:
+                f.write(file_hash)
+            logging.info("hash compartido")
+            
     except Exception as e:
-        print(f"error al subir el archivo a la nube {e}")
         logging.error(f"error al subir el archivo a la nube {e}")
         return
     
@@ -93,10 +97,8 @@ def kax_pdf():
 
     try:
         acts.removeShm(file_hash)
-        print("archivo eliminado de la memoria compartida local")
         logging.info("archivo eliminado de la memoria compartida")
     except Exception as e:
-        print("error al eliminar el archivo de la memoria")
         logging.error("error al eliminar el archivo de la memoria")
         # La ejecución puede continuar, es un paso no crítico para el flujo principal.
 
@@ -106,10 +108,8 @@ def kax_pdf():
 
     try:
         acts.downloadFromCloud(file_hash)
-        print("descarga completa de la nube a memoria compartida")
         logging.info("descarga completa de la nube a memoria compartida")
     except Exception as e:
-        print(f"error al descargar el archivo de la nube {e}")
         logging.error(f"error al descargar el archivo de la nube {e}")
         return
     
@@ -120,19 +120,15 @@ def kax_pdf():
     try:
         data = acts.getRes(file_hash)
         acts.saveFile("",data, PDF_PATH_OUT)
-        print(f"se guardo el archivo")
         logging.info(f"se guardo el archivo")
         acts.removeShmFromCloud(file_hash)
-        print("archivo eliminado")
         logging.info("archivo eliminado")
     except Exception as e:
-        print(f"error al guardar el archivo {e}")
         logging.error(f"error al guardar el archivo {e}")
         return
     
     end_time = time.time()
     tiempo_total = end_time - star_time
-    print(f"tiempo de operacion {tiempo_total:.4f} en segundos")
     logging.info(f"tiempo de operacion {tiempo_total:.4f} en segundos")
 
     #comprobar que el archivo se guardo correctamente
@@ -141,11 +137,9 @@ def kax_pdf():
 if __name__ == "__main__":
     if not os.path.exists(KAX_STORE_DIR):
         os.makedirs(KAX_STORE_DIR)
-        print(f"Carpeta creada: {KAX_STORE_DIR}")
-        logging.info(f"Carpeta creada: {KAX_STORE_DIR}")
+        logging.info(f"carpeta creada: {KAX_STORE_DIR}")
     if not os.path.exists(KAX_FILES_DIR):
         os.makedirs(KAX_FILES_DIR)
-        print(f"Carpeta creada: {KAX_FILES_DIR}")
-        logging.info(f"Carpeta creada: {KAX_FILES_DIR}")
+        logging.info(f"carpeta creada: {KAX_FILES_DIR}")
     
     kax_pdf()
